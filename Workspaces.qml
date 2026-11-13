@@ -326,6 +326,17 @@ BarWidget {
     refreshWindowState()
   }
 
+  // Omarchy's layout commands (Super+L's toggle, the menu's Workspace Layout
+  // rows, the default layout) end with `omarchy-shell omarchy.workspaces
+  // refresh`, since a layout change emits no Hyprland event. This widget takes
+  // the stock widget's place, so it answers that call: one instance owns the
+  // target and relays it to the bars on the other monitors.
+  ShellIpc {
+    target: "omarchy.workspaces"
+
+    function refresh(): void { root.broadcast("refreshLayout") }
+  }
+
   // `omarchy-shell thord.workspaces restoreLast`: restore the window most
   // recently minimized from the focused workspace (see Minimized.qml).
   IpcHandler {

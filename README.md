@@ -62,8 +62,11 @@ The label asks `omarchy-hyprland-workspace-layout-current` for the mode,
 because floating is no Hyprland layout and `tiledLayout` can't show it, and
 names it with the label Omarchy's menu gives that mode, so a rename in Omarchy
 reaches the bar without a change here. Hyprland sends no event when a layout
-changes, so the label re-reads it on workspace and monitor switches and reloads. A layout command can
-update it at once with `hyprctl dispatch event thord.layout:changed`. Likewise
+changes, so the label re-reads it on workspace and monitor switches and reloads,
+and when Omarchy's layout commands call `omarchy-shell omarchy.workspaces
+refresh` (this widget answers for the stock one). Another layout command can
+update it at once with that call or with `hyprctl dispatch event
+thord.layout:changed`. Likewise
 a binding that changes client-only fullscreen can send
 `thord.window:changed`.
 
