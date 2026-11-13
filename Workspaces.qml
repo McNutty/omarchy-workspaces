@@ -17,6 +17,8 @@ import qs.Ui
 //   showLayout          false: no layout label
 //   layoutCycleCommand  run with the workspace id when the label is clicked;
 //                       empty (the default) leaves the label display-only
+//   layoutLabels        { mode: label } for layout modes Omarchy has no name
+//                       for, e.g. { "master": "Centred Master" }
 //   showWindowState     false: no Max / Float / Group label
 //   showWindows         false: no icons for the workspace's open windows
 //   showMinimized       false: no minimized icons, restoreLast does nothing
@@ -136,12 +138,82 @@ BarWidget {
     }
   }
 
-  // Layout of the workspace this bar's monitor is showing (hyprctl's tiledLayout),
-  // shown as a small label after the workspace numbers.
+  // Layout of the workspace this bar's monitor is showing, shown as a small label
+  // after the workspace numbers. The mode comes from Omarchy's own
+  // omarchy-hyprland-workspace-layout-current (dwindle, scrolling, floating, or
+  // whatever mode a custom cycle saved), because floating is no Hyprland layout
+  // and hyprctl's tiledLayout can't tell it apart. The name is the one Omarchy's
+  // menu gives that mode, in the shell's language, so the label follows Omarchy
+  // when it renames them. layoutLabels names modes Omarchy has no name for.
+  property string layoutMode: ""
+  property bool layoutStale: false
+
+  readonly property var layoutLabels:
+    root.settings && root.settings.layoutLabels && typeof root.settings.layoutLabels === "object"
+      ? root.settings.layoutLabels : ({})
+
+  function menuLabel(catalog, mode) {
+    try {
+      var entry = JSON.parse(catalog || "{}")["appearance.workspace-layout." + mode]
+      return entry && typeof entry.label === "string" ? entry.label : ""
+    } catch (e) {
+      return ""
+    }
+  }
+
   readonly property string layoutName: {
-    var ws = root.thisMonitor ? root.thisMonitor.activeWorkspace : Hyprland.focusedWorkspace
-    var raw = ws && ws.lastIpcObject ? String(ws.lastIpcObject.tiledLayout || "") : ""
-    return raw ? raw.charAt(0).toUpperCase() + raw.slice(1) : ""
+    var mode = root.layoutMode
+    if (!mode) return ""
+    if (typeof root.layoutLabels[mode] === "string") return root.layoutLabels[mode]
+    return root.menuLabel(languageMenu.text(), mode) || root.menuLabel(englishMenu.text(), mode)
+      || mode.charAt(0).toUpperCase() + mode.slice(1)
+  }
+
+  function refreshLayout() {
+    if (layoutProc.running) {
+      root.layoutStale = true
+      return
+    }
+    if (root.activeWsId < 1) {
+      root.layoutMode = ""
+      return
+    }
+    layoutProc.workspace = root.activeWsId
+    layoutProc.command = ["omarchy-hyprland-workspace-layout-current", String(root.activeWsId)]
+    layoutProc.running = true
+  }
+
+  onActiveWsIdChanged: refreshLayout()
+
+  Process {
+    id: layoutProc
+    property int workspace: -1
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: {
+        if (layoutProc.workspace === root.activeWsId) root.layoutMode = text.trim()
+      }
+    }
+    onExited: {
+      if (!root.layoutStale) return
+      root.layoutStale = false
+      // Deferred: the process still reports running while it signals exit.
+      Qt.callLater(root.refreshLayout)
+    }
+  }
+
+  FileView {
+    id: englishMenu
+    path: Quickshell.env("OMARCHY_PATH") + "/default/i18n/en/menu.json"
+    printErrors: false
+    blockLoading: true
+  }
+
+  FileView {
+    id: languageMenu
+    path: Quickshell.env("OMARCHY_PATH") + "/default/i18n/" + I18n.language + "/menu.json"
+    printErrors: false
+    blockLoading: true
   }
 
   // State of the window last focused on this monitor's workspace, shown in the
@@ -221,10 +293,10 @@ BarWidget {
   }
 
   // hyprmoncfg applies a profile by rewriting its Lua file and reloading, so
-  // re-read the rules on reloads and monitor changes. tiledLayout is only
-  // re-read on request: on workspace/monitor switches, reloads, and the custom
-  // event thord.layout:changed (a layout rule change emits no event, so a
-  // layout command should send it, as workspace-layout-cycle does).
+  // re-read the rules on reloads and monitor changes. The layout is re-read on
+  // workspace switches, reloads, and the custom event thord.layout:changed (a
+  // layout change emits no event, so a layout command should send it, as
+  // workspace-layout-cycle does).
   Connections {
     target: Hyprland
     function onRawEvent(event) {
@@ -234,6 +306,8 @@ BarWidget {
       if (name === "configreloaded" || name.indexOf("workspace") === 0 || name.indexOf("focusedmon") === 0
           || name.indexOf("moveworkspace") === 0 || (name === "custom" && String(event.data) === "thord.layout:changed"))
         Hyprland.refreshWorkspaces()
+      if (name === "configreloaded" || (name === "custom" && String(event.data) === "thord.layout:changed"))
+        root.refreshLayout()
       if (name === "configreloaded" || name.indexOf("workspace") === 0 || name.indexOf("focusedmon") === 0
           || name.indexOf("activewindow") === 0 || name.indexOf("fullscreen") === 0 || name === "changefloatingmode"
           || name === "pin" || name.indexOf("openwindow") === 0 || name.indexOf("closewindow") === 0
@@ -248,6 +322,7 @@ BarWidget {
 
   Component.onCompleted: {
     refreshRules()
+    refreshLayout()
     refreshWindowState()
   }
 

@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "thord.workspaces",
   "name": "Workspaces plus",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "author": "Martin Gjerde",
   "license": "MIT",
   "description": "Workspace numbers per monitor, the workspace layout, the focused window's state, the workspace's open windows, and per-workspace minimized windows.",

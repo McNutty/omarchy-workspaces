@@ -8,8 +8,9 @@ puts five things in one row, each of which can be turned off:
   open on that monitor plus those a Hyprland workspace rule assigns to it (as
   hyprmoncfg writes them). Without rules it shows 1-5 plus every open
   workspace, like the stock widget.
-- **Layout.** A small label with the workspace's layout (Dwindle, Scrolling,
-  Master, ...), optionally clickable to run a command of yours.
+- **Layout.** A small label with the workspace's layout under Omarchy's own
+  names for it (Tiling, Scrolling, Floating), optionally clickable to run a
+  command of yours.
 - **Window state.** An accent-coloured word for the focused window: `Max`,
   `Tiled FS`, `Float`, `Pop out` (floating and pinned), `Group i/n`, and
   `Square` while Omarchy's single-window square aspect toggle applies.
@@ -52,12 +53,16 @@ counts as on:
 | `perMonitor` | `true` | `false`: every bar lists 1-5 plus every open workspace. The highlight stays per monitor. |
 | `showLayout` | `true` | `false`: no layout label. |
 | `layoutCycleCommand` | `""` | Shell command run with the workspace id appended when the layout label is clicked. Empty: the label is display-only. |
+| `layoutLabels` | `{}` | Names for layout modes Omarchy has none for, e.g. `{ "master": "Centred Master" }`. Any other mode shows Omarchy's menu name for it, in the shell's language, or else the mode capitalized. |
 | `showWindowState` | `true` | `false`: no window state label. |
 | `showWindows` | `true` | `false`: no icons for the open windows. |
 | `showMinimized` | `true` | `false`: no minimized icons, and `restoreLast` does nothing. |
 
-Hyprland sends no event when a layout rule changes, so the label re-reads the
-layout on workspace and monitor switches and reloads. A layout command can
+The label asks `omarchy-hyprland-workspace-layout-current` for the mode,
+because floating is no Hyprland layout and `tiledLayout` can't show it, and
+names it with the label Omarchy's menu gives that mode, so a rename in Omarchy
+reaches the bar without a change here. Hyprland sends no event when a layout
+changes, so the label re-reads it on workspace and monitor switches and reloads. A layout command can
 update it at once with `hyprctl dispatch event thord.layout:changed`. Likewise
 a binding that changes client-only fullscreen can send
 `thord.window:changed`.
